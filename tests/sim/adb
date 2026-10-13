@@ -1,0 +1,162 @@
+#!/usr/bin/env node
+// Simulated adb + Galaxy Watch. State in $SIM/state.json. Device file system under $SIM/root.
+// The watch is listed twice (IP:port and mDNS name) like a real Wear OS watch, and can flap offline.
+const fs = require('fs'), path = require('path'), { spawn, spawnSync } = require('child_process');
+const SIM = process.env.SIM;
+const STATE = path.join(SIM, 'state.json');
+const now = () => Date.now();
+const load = () => { try { return JSON.parse(fs.readFileSync(STATE, 'utf8')); } catch { return { paired: false, connected: [], offlineUntil: {}, allOfflineUntil: 0, installs: 0 }; } };
+const st = load();
+const save = () => fs.writeFileSync(STATE, JSON.stringify(st));
+fs.appendFileSync(path.join(SIM, 'calls.log'), process.argv.slice(2).join(' ') + '\n');
+const IPADDR = `127.0.0.1:${process.env.FAKE_CONNECT_PORT || 41567}`;
+const MDNS = 'adb-RFATB1HMFMW-ZEz0pJ._adb-tls-connect._tcp';
+let a = process.argv.slice(2), serial = null;
+if (a[0] === '-s') { serial = a[1]; a = a.slice(2); }
+const out = (s, code = 0) => { process.stdout.write(s); process.exit(code); };
+const stateOf = (s) => (now() < (st.allOfflineUntil || 0) || now() < ((st.offlineUntil || {})[s] || 0) ? 'offline' : 'device');
+const listed = () => { const l = [...st.connected]; if (st.connected.includes(IPADDR) && st.mdnsTwin) l.push(MDNS); return l; };
+function needDevice() {
+  if (!serial || !listed().includes(serial)) out(`adb: device '${serial}' not found\n`, 1);
+  if (stateOf(serial) !== 'device') out(`adb: device offline\n`, 1);
+}
+const devEnv = { ...process.env, PATH: path.join(SIM, 'bin') + ':' + process.env.PATH, SIM, ROOT: path.join(SIM, 'root') };
+const mapPaths = (c) => c.replace(/\/sdcard/g, path.join(SIM, 'root/sdcard')).replace(/\/data\/local\/tmp/g, path.join(SIM, 'root/tmp'));
+
+switch (a[0]) {
+  case 'start-server': case 'kill-server': out('');
+  case 'version': out('Android Debug Bridge version 1.0.41\nVersion 36.0.0-sim\n');
+  case 'devices': out('List of devices attached\n' + listed().map((s) => `${s}\t${stateOf(s)}${a[1] === '-l' ? ' product:freshwifi model:SM_R920 device:freshwifi transport_id:1' : ''}\n`).join('') + '\n');
+  case 'mdns': out('List of discovered mdns services\n' + (st.paired && st.mdnsTwin ? `adb-RFATB1HMFMW-ZEz0pJ\t_adb-tls-connect._tcp\t${IPADDR}\n` : ''));
+  case 'pair':
+    if (a[1] === '127.0.0.1:37011' && a[2] === '123456') { st.paired = true; save(); out('Successfully paired to 127.0.0.1:37011 [guid=adb-RFATB1HMFMW-ZEz0pJ]\n'); }
+    if (a[1] !== '127.0.0.1:37011') out('Failed: Unable to start pairing client.\n', 1);
+    out('Failed: Wrong password or connection was dropped.\n', 1);
+  case 'connect':
+    if (a[1] === IPADDR) { if (!st.paired) out(`failed to authenticate to ${a[1]}\n`, 1); if (!st.connected.includes(a[1])) st.connected.push(a[1]); save(); out(`connected to ${a[1]}\n`); }
+    out(`failed to connect to '${a[1]}': Connection refused\n`, 1);
+  case 'disconnect': st.connected = st.connected.filter((s) => s !== a[1] && !(a[1] === MDNS && s === IPADDR)); save(); out(`disconnected ${a[1]}\n`);
+  case 'install': case 'install-multiple': {
+    needDevice();
+    const files = a.slice(1).filter((x) => !x.startsWith('-'));
+    st.installs = (st.installs || 0) + 1; save();
+    // scenario hooks
+    if (process.env.FLAP_DURING_INSTALL === 'ip') { st.offlineUntil = { [IPADDR]: now() + 9000 }; save(); }          // IP entry flaps; mDNS twin stays up
+    if (process.env.FLAP_DURING_INSTALL === 'all' && st.installs === 1) { st.allOfflineUntil = now() + 5000; save(); spawnSync('sleep', ['1.5']); out('adb: failed to install: closed\n', 1); }
+    spawnSync('sleep', ['3']);
+    if (!files.every((f) => fs.existsSync(f))) out('adb: failed to stat\n', 1);
+    if (files.some((f) => /old/.test(path.basename(f))) && !fs.existsSync(path.join(SIM, 'removed.flag'))) out('Performing Streamed Install\nadb: failed to install old.apk: Failure [INSTALL_FAILED_VERSION_DOWNGRADE: Downgrade detected: Update version code 30301 is older than current 30400]\n', 1);
+    if (files.some((f) => /bad/.test(path.basename(f)))) out('Performing Streamed Install\nadb: failed to install x.apk: Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Package signatures do not match]\n', 1);
+    const pk = path.join(SIM, 'packages.txt'); fs.appendFileSync(pk, '\ncom.sim.' + path.basename(files[0]).replace(/\W+/g, '').toLowerCase());
+    out('Performing Streamed Install\nSuccess\n');
+  }
+  case 'uninstall': needDevice(); out('Success\n');
+  case 'reboot': needDevice(); fs.appendFileSync(path.join(SIM, 'reboots.log'), (a[1] || 'normal') + '\n'); out('');
+  case 'push': {
+    needDevice();
+    const [src, dst] = a.slice(1).filter((x) => !x.startsWith('-'));
+    const d = mapPaths(dst); fs.mkdirSync(path.dirname(d), { recursive: true }); fs.cpSync(src, d, { recursive: true });
+    if (/\.sh$/.test(d)) fs.writeFileSync(d, mapPaths(fs.readFileSync(d, 'utf8')));   // scripts see the simulated /sdcard
+    out(`${src}: 1 file pushed, 0 skipped. 10 MB/s\n`);
+  }
+  case 'pull': {
+    needDevice();
+    const args = a.slice(1).filter((x) => !x.startsWith('-'));
+    const src = mapPaths(args[0]), dst = args[1];
+    if (!fs.existsSync(src)) out(`adb: error: failed to stat remote object '${args[0]}': No such file or directory\n`, 1);
+    const target = fs.existsSync(dst) && fs.statSync(dst).isDirectory() ? path.join(dst, path.basename(src)) : dst;
+    fs.cpSync(src, target, { recursive: true }); out('1 file pulled\n');
+  }
+  case 'tcpip': out('restarting in TCP mode port: 5555\n');
+  case 'forward': {
+    needDevice();
+    st.forwards = st.forwards || {};
+    if (a[1] === '--remove') { for (const [k, v] of Object.entries(st.forwards)) if ('tcp:' + v === a[2]) delete st.forwards[k]; save(); out(''); }
+    if (a[1] === '--list') out('');
+    st.forwards[a[2].replace('localabstract:', '')] = +a[1].replace('tcp:', ''); save(); out(String(a[1].replace('tcp:', '')) + '\n');
+  }
+  case 'reverse': needDevice(); out('');
+  case 'logcat': case 'shell': case 'exec-out': {
+    needDevice();
+    let rest = a.slice(1);
+    let tty = false;
+    if (a[0] === 'logcat') rest = ['logcat', ...rest];
+    while (rest[0] === '-t' || rest[0] === '-T' || rest[0] === '-x') { if (rest[0] === '-t') tty = true; rest = rest.slice(1); }
+    const cmd = rest.join(' ');
+    if (/list_apps=true/.test(cmd)) {
+      if (!fs.existsSync(path.join(SIM, 'root/tmp/scrcpy-server.jar'))) out('Error: Could not find or load main class com.genymobile.scrcpy.Server\n', 1);
+      if (/cleanup=true/.test(cmd)) fs.unlinkSync(path.join(SIM, 'root/tmp/scrcpy-server.jar'));
+      fs.appendFileSync(path.join(SIM, 'device.log'), 'list_apps\n');
+      const pad = (n) => n.length < 30 ? n + ' '.repeat(30 - n.length) : n + '\n   ' + ' '.repeat(30);
+      const apps = [['*', 'Android System', 'android'], ['*', 'Settings', 'com.android.settings'], ['*', 'Samsung Health', 'com.samsung.android.health'], ['-', 'Relink', 'app.relink'], ['-', 'Watch Face Studio Sample Very Long Name', 'com.example.watchface'], ['-', 'טיימר משה', 'com.moshe.timer']];
+      const extra = (fs.existsSync(path.join(SIM, 'packages.txt')) ? fs.readFileSync(path.join(SIM, 'packages.txt'), 'utf8') : '').split('\n').map((x) => x.trim()).filter(Boolean).map((p) => ['-', 'Sim ' + p.split('.').pop(), p]);
+      spawnSync('sleep', ['0.6']);
+      out('[server] INFO: Device: [samsung] samsung SM-R920 (Android 16)\n[server] INFO: Processing Android apps... (this may take some time)\n[server] INFO: List of apps:' + [...apps, ...extra].map(([f, n, p]) => `\n ${f} ${pad(n)} ${p}`).join('') + '\n');
+    }
+    if (/com\.genymobile\.scrcpy\.Server/.test(cmd)) { fakeScrcpyServer(cmd); break; }
+    if (tty) {   // interactive session: run a local shell reading stdin
+      const p = spawn('sh', ['-i'], { env: { ...devEnv, PS1: 'freshwifi:/ $ ', ENV: '' }, cwd: path.join(SIM, 'root'), stdio: ['pipe', 'inherit', 'inherit'] });
+      p.stdin.write(mapPaths(cmd.replace(/exec sh -l/, 'true')) + '\n');
+      // behave like a line editor on a PTY: Ctrl+U (\x15) clears the line being typed, Enter submits it
+      let lineBuf = '';
+      process.stdin.on('data', (d) => {
+        for (const ch of d.toString()) {
+          if (ch === '\x15') lineBuf = '';
+          else if (ch === '\x04') { p.stdin.end(); return; }
+          else if (ch === '\r' || ch === '\n') { p.stdin.write(mapPaths(lineBuf) + '\n'); lineBuf = ''; }
+          else if (ch === '\x7f') lineBuf = lineBuf.slice(0, -1);
+          else lineBuf += ch;
+        }
+      });
+      process.stdin.on('end', () => p.stdin.end());
+      p.on('exit', (c) => process.exit(c || 0));
+      break;
+    }
+    const p = spawn('sh', ['-c', mapPaths(cmd)], { env: devEnv, cwd: path.join(SIM, 'root'), stdio: ['ignore', 'inherit', 'inherit'] });
+    p.on('exit', (c) => process.exit(c || 0));
+    process.on('SIGTERM', () => { p.kill('SIGTERM'); process.exit(0); });
+    break;
+  }
+  default: out(`unknown: ${a.join(' ')}\n`, 1);
+}
+
+// ───── fake scrcpy server: streams watch.h264 like the real one (forward tunnel) ─────
+function fakeScrcpyServer(cmd) {
+  const net = require('net');
+  const scid = (cmd.match(/scid=([0-9a-f]+)/) || [])[1];
+  const port = (st.forwards || {})['scrcpy_' + scid];
+  const dlog = (t) => fs.appendFileSync(path.join(SIM, 'device.log'), t + '\n');
+  if (!fs.existsSync(path.join(SIM, 'root/tmp/scrcpy-server.jar'))) { process.stderr.write('ERROR: Could not find server jar\n'); process.exit(1); }
+  if (!port) { process.stderr.write('ERROR: no forward\n'); process.exit(1); }
+  if (process.env.FAKE_SCRCPY_FAIL) { process.stderr.write('[server] ERROR: Could not open video stream\n[server] ERROR: android.media.MediaCodec$CodecException: Error 0xfffffff4\n'); process.exit(1); }
+  dlog('scrcpy-server start ' + cmd.split('Server ')[1]);
+  // split Annex B stream into config (SPS+PPS) and access units
+  const raw = fs.readFileSync(path.join(SIM, 'watch.h264'));
+  const nals = []; let i = 0, start = -1;
+  const isSC = (j) => raw[j] === 0 && raw[j + 1] === 0 && (raw[j + 2] === 1 || (raw[j + 2] === 0 && raw[j + 3] === 1));
+  for (; i < raw.length - 3; i++) if (isSC(i)) { if (start >= 0) nals.push(raw.subarray(start, i)); start = i; i += 2; }
+  nals.push(raw.subarray(start));
+  const type = (n) => n[(n[2] === 1 ? 3 : 4)] & 0x1f;
+  const config = Buffer.concat(nals.filter((n) => [7, 8].includes(type(n))));
+  const frames = []; let pend = [];
+  for (const n of nals) { const t = type(n); if (t === 7 || t === 8) continue; pend.push(n); if (t === 1 || t === 5) { frames.push({ key: t === 5, data: Buffer.concat(pend) }); pend = []; } }
+  const conns = [];
+  const srv = net.createServer((c) => {
+    conns.push(c); c.on('error', () => {});
+    if (conns.length === 1) c.write(Buffer.from([0]));
+    if (conns.length === 2) {
+      const video = conns[0], control = c;
+      control.on('data', (d) => { for (let k = 0; k < d.length;) { const ty = d[k]; const len = { 0: 14, 2: 32, 3: 21, 4: 2, 10: 2, 17: 1 }[ty] || (ty === 1 ? 5 + d.readUInt32BE(k + 1) : d.length - k); let extra = ''; if (ty === 2) extra = ` action=${d[k + 1]} x=${d.readInt32BE(k + 10)} y=${d.readInt32BE(k + 14)} w=${d.readUInt16BE(k + 18)}`; if (ty === 0) extra = ` action=${d[k + 1]} key=${d.readInt32BE(k + 2)}`; if (ty === 1) extra = ' text=' + d.subarray(k + 5, k + len).toString(); if (ty === 3) extra = ` v=${d.readInt16BE(k + 15)}`; dlog(`scrcpy-control type=${ty}${extra}`); k += len; } });
+      const name = Buffer.alloc(64); name.write('SM-R920');
+      const meta = Buffer.alloc(12); meta.writeUInt32BE(0x68323634, 0); meta.writeUInt32BE(448, 4); meta.writeUInt32BE(448, 8);
+      const pkt = (flagsHi, lo, data) => { const h = Buffer.alloc(12); h.writeUInt32BE(flagsHi >>> 0, 0); h.writeUInt32BE(lo >>> 0, 4); h.writeUInt32BE(data.length, 8); video.write(Buffer.concat([h, data])); };
+      video.write(Buffer.concat([name, meta]));
+      pkt(0x80000000, 0, config);
+      let f = 0, pts = 0;
+      const tick = setInterval(() => { if (video.destroyed) return; const fr = frames[f % frames.length]; pts += 33333; pkt((fr.key ? 0x40000000 : 0) | Math.floor(pts / 4294967296), pts % 4294967296, fr.data); f++; }, 33);
+      video.on('close', () => { clearInterval(tick); dlog('scrcpy-server stop'); process.exit(0); });
+    }
+  });
+  srv.listen(port, '127.0.0.1');
+  process.on('SIGTERM', () => process.exit(0));
+}

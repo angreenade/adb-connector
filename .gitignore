@@ -1,0 +1,9 @@
+dist/
+node_modules/
+tests/sim/*.log
+tests/sim/packages.txt
+tests/sim/removed.flag
+tests/sim/root/tmp/
+tests/sim/settings.json
+tests/sim/shots/
+tests/sim/state.json

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" data-mode="light">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: file:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>ADB Connector</title>
+  <link rel="stylesheet" href="bundle.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <nav id="rail" class="rail" aria-label="Sections"></nav>
+    <div class="main">
+      <header class="topbar">
+        <button id="switcher" class="switcher none" title="Choose device"></button>
+        <span class="grow"></span>
+        <span id="adbChip" class="adb-chip">Starting ADB…</span>
+      </header>
+      <main id="view" class="view"></main>
+    </div>
+  </div>
+  <div id="scrim" class="scrim hidden"><div id="dialog" class="dialog" role="dialog" aria-modal="true"></div></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="bundle.js"></script>
+</body>
+</html>

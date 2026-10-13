@@ -90,5 +90,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/angreenade/adb-connector.git"
-  }
+  },
+  "homepage": "https://github.com/angreenade/adb-connector"
 }

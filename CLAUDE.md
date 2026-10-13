@@ -1,8 +1,8 @@
 # ADB Connector — project notes for Claude Code
 
-Windows desktop app (Electron) for connecting Android devices — mainly a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.5.0** (see `package.json`). Owner: Moshe.
+Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.5.0** (see `package.json`). Owner: Moshe.
 
-**Rule:** every build gets a new version number in `package.json` (artifact is `dist/ADB-Connector-<version>.exe`) so builds are distinguishable.
+**Rule:** every build gets a new version number in `package.json` (installer is `dist/ADB-Connector-Setup-<version>.exe`) so builds are distinguishable.
 
 ## Commands
 ```

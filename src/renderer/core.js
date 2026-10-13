@@ -6,7 +6,7 @@ export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&a
 export const q = (s) => "'" + String(s).replace(/'/g, "'\\''") + "'";
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 export function fmtBytes(n) { n = +n || 0; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; } return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i]; }
-export function fmtDate(sec) { if (!sec) return ''; const d = new Date(sec * 1000); return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); }
+export function fmtDate(sec) { if (!sec) return ''; const d = new Date(sec * 1000); return d.toLocaleDateString(document.documentElement.lang === 'he' ? 'he-IL' : undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(document.documentElement.lang === 'he' ? 'he-IL' : undefined, { hour: '2-digit', minute: '2-digit' }); }
 export function fmtDuration(s) { s = Math.floor(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}h ${m}m` : m ? `${m}m ${String(x).padStart(2, '0')}s` : `${x}s`; }
 export async function call(fn, ...a) {
   try { const r = await fn(...a); return r ?? { ok: false, msg: 'No response' }; }

@@ -17,6 +17,7 @@ export const page = {
         <header class="page-head"><div><h1>Settings</h1></div></header>
         <section class="panel">
           <h2>Appearance</h2>
+          <div class="set-row"><span><b>Language</b></span><div class="seg notr" id="lang">${[['en', 'English'], ['he', 'עברית']].map(([v, t]) => `<button data-l="${v}" class="${(s.lang || 'en') === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
           <div class="set-row"><span><b>Theme</b></span><div class="seg" id="theme">${[['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([v, t]) => `<button data-t="${v}" class="${(s.theme || 'system') === v ? 'on' : ''}">${t}</button>`).join('')}</div></div>
         </section>
         <section class="panel">
@@ -38,6 +39,7 @@ export const page = {
           <div class="row"><button class="btn tonal sm" id="openLog">${icon('file')}Open log file</button></div>
         </section>
       </div>`;
+    $$('#lang button', el).forEach((b) => (b.onclick = async () => { if ((store.settings.lang || 'en') === b.dataset.l) return; await setSettings({ lang: b.dataset.l }); try { localStorage.setItem('lang', b.dataset.l); } catch {} location.reload(); }));
     $$('#theme button', el).forEach((b) => (b.onclick = async () => { await setSettings({ theme: b.dataset.t }); applyTheme(b.dataset.t); $$('#theme button', el).forEach((x) => x.classList.toggle('on', x === b)); }));
     $('#pickDir', el).onclick = async () => { const d = await call(api.pickFolder); if (typeof d === 'string') { await setSettings({ saveDir: d }); toast('Save folder changed'); this.show(); } };
     const rd = $('#resetDir', el); if (rd) rd.onclick = async () => { await setSettings({ saveDir: '' }); this.show(); };

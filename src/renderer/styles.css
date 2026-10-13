@@ -489,3 +489,26 @@ pre.out { margin: 12px 0 0; max-height: 300px; overflow: auto; padding: 12px 14p
 .upd-ring { width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--violet) calc(var(--p) * 1%), var(--line-2) 0); flex: none; }
 @keyframes updPulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--violet) 45%, transparent); } 50% { box-shadow: 0 0 0 5px transparent; } }
 .upd-notes { max-height: 180px; overflow: auto; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); font-size: 13px; white-space: pre-wrap; margin: 8px 0; }
+
+/* ── first-device guide (devices page) */
+.guide { padding: 22px; border-radius: var(--r-lg); border: 1px dashed var(--line-2); background: var(--surface); }
+.guide h3 { margin: 0 0 6px; font-size: 17px; }
+.guide-pre { margin: 0 0 16px; color: var(--ink-2); font-size: 14px; }
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.guide-card { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: var(--r-md); background: var(--surface-2); font-size: 13.5px; color: var(--ink-2); }
+.guide-card > .ic { width: 26px; height: 26px; fill: var(--violet); }
+.guide-card > b { color: var(--ink); font-size: 14.5px; }
+.guide-card ol { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 4px; }
+.guide-card small { color: var(--ink-3); font-size: 12.5px; }
+
+/* ── right-to-left (Hebrew) */
+[dir=rtl] body { font-family: "Segoe UI Variable Text", "Segoe UI", Arial, sans-serif; }
+[dir=rtl] .app { direction: rtl; }
+[dir=rtl] code, [dir=rtl] pre, [dir=rtl] kbd, [dir=rtl] .term-wrap, [dir=rtl] .xterm, [dir=rtl] .cmd-bar textarea, [dir=rtl] .lc-view, [dir=rtl] .app-pkg, [dir=rtl] .fname, [dir=rtl] .crumbs, [dir=rtl] .live-frame, [dir=rtl] .mono-title,
+[dir=rtl] input[type=text], [dir=rtl] input:not([type]), [dir=rtl] input[type=number] { direction: ltr; unicode-bidi: isolate; }
+[dir=rtl] input::placeholder { direction: rtl; text-align: right; }
+[dir=rtl] .app-label, [dir=rtl] .dev-name, [dir=rtl] .sw-name, [dir=rtl] .lib-text b { unicode-bidi: plaintext; }
+[dir=rtl] .ic.flip, [dir=rtl] [data-a="back"] .ic { transform: scaleX(-1); }
+[dir=rtl] .switch::after { left: auto; right: 3px; }
+[dir=rtl] .switch:checked::after { transform: translateX(-18px); }
+[dir=rtl] .switch-inline .switch:checked::after { transform: translateX(-16px); }

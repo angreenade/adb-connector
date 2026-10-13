@@ -19,9 +19,9 @@ export const page = {
   id: 'devices', title: 'Devices', icon: 'devices',
   mount(el) {
     el.innerHTML = `
-      <header class="page-head"><div><h1>Devices</h1><p class="sub">Connect a Galaxy Watch or Android phone over Wi-Fi or USB.</p></div></header>
+      <header class="page-head"><div><h1>Devices</h1><p class="sub">Connect a phone, tablet or watch over USB or Wi-Fi.</p></div></header>
       <div class="connect-grid">
-        <button class="tile primary" id="btnPair">${icon('pair')}<span><b>Wireless pairing</b><small>First time with a watch or phone</small></span></button>
+        <button class="tile primary" id="btnPair">${icon('pair')}<span><b>Wireless pairing</b><small>First time over Wi-Fi</small></span></button>
         <button class="tile" id="btnIp">${icon('link')}<span><b>IP connect</b><small>Already paired — type IP and port</small></span></button>
         <button class="tile" id="btnScan">${icon('search')}<span><b>Scan network</b><small>Find devices on this Wi-Fi</small></span></button>
         <button class="tile" id="btnUsb">${icon('usb')}<span><b>USB direct</b><small>WebADB, no driver server</small></span></button>
@@ -30,9 +30,14 @@ export const page = {
       <section class="list-section">
         <h2>Your devices</h2>
         <ul id="deviceList" class="dev-list"></ul>
-        <div id="emptyState" class="empty-inline">
-          ${icon('watch', 'ic big')}
-          <div><b>No devices yet</b><p>For a Galaxy Watch: on the watch open <b>Settings → Developer options → Wireless debugging → Pair new device</b>, then click <b>Wireless pairing</b>.</p></div>
+        <div id="emptyState" class="guide">
+          <h3>Connect your first device</h3>
+          <p class="guide-pre">First turn on <b>Developer options</b>: in <b>Settings → About phone</b> (or <b>About watch → Software</b>), tap <b>Build number</b> 7 times.</p>
+          <div class="guide-grid">
+            <div class="guide-card">${icon('usb')}<b>Phone or tablet — USB</b><ol><li>Turn on <b>USB debugging</b> in Developer options.</li><li>Plug the device into this computer.</li><li>Tap <b>Allow</b> on the device. It appears here by itself.</li></ol></div>
+            <div class="guide-card">${icon('phone')}<b>Phone or tablet — Wi-Fi</b><ol><li>Android 11 or newer: turn on <b>Wireless debugging</b>.</li><li>Tap <b>Pair device with pairing code</b>.</li><li>Click <b>Wireless pairing</b> above and type what it shows.</li></ol><small>Android 10 or older: connect by USB first, then use <b>Switch to Wi-Fi</b>.</small></div>
+            <div class="guide-card">${icon('watch')}<b>Watch — Wi-Fi</b><ol><li>On the watch: <b>Developer options → Wireless debugging</b> (turn it on).</li><li>Tap <b>Pair new device</b>.</li><li>Click <b>Wireless pairing</b> above and type the IP, port and code.</li></ol><small>The watch and this computer must be on the same Wi-Fi.</small></div>
+          </div>
         </div>
       </section>`;
     $('#btnPair', el).onclick = () => pairDialog('code');

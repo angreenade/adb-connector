@@ -34,7 +34,7 @@ export function appIcon(meta, pkg, label, cls = '') {
   const h = hue(pkg);
   return `<span class="app-ic letter ${cls}" style="--h:${h}">${esc(String(label || guessName(pkg)).trim().slice(0, 1).toUpperCase() || '?')}</span>`;
 }
-const when = (ms) => { const d = new Date(ms); const today = new Date(); const same = d.toDateString() === today.toDateString(); return same ? `Today ${d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' }) + ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); };
+const when = (ms) => { const d = new Date(ms); const today = new Date(); const same = d.toDateString() === today.toDateString(); return same ? `Today ${d.toLocaleTimeString(document.documentElement.lang === 'he' ? 'he-IL' : undefined, { hour: '2-digit', minute: '2-digit' })}` : d.toLocaleDateString(document.documentElement.lang === 'he' ? 'he-IL' : undefined, { day: 'numeric', month: 'short', year: d.getFullYear() === today.getFullYear() ? undefined : 'numeric' }) + ' ' + d.toLocaleTimeString(document.documentElement.lang === 'he' ? 'he-IL' : undefined, { hour: '2-digit', minute: '2-digit' }); };
 const ACTION = { install: ['Installed', 'ok'], downgrade: ['Older version installed', 'ok'], saved: ['Saved from device', 'info'], uninstall: ['Uninstalled', 'muted'] };
 
 export const page = {

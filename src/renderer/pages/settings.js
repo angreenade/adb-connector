@@ -39,7 +39,7 @@ export const page = {
           <div class="row"><button class="btn tonal sm" id="openLog">${icon('file')}Open log file</button></div>
         </section>
       </div>`;
-    $$('#lang button', el).forEach((b) => (b.onclick = async () => { if ((store.settings.lang || 'en') === b.dataset.l) return; await setSettings({ lang: b.dataset.l }); try { localStorage.setItem('lang', b.dataset.l); } catch {} location.reload(); }));
+    $$('#lang button', el).forEach((b) => (b.onclick = async () => { if ((store.settings.lang || 'en') === b.dataset.l) return; $$('#lang button', el).forEach((x) => x.classList.toggle('on', x === b)); try { localStorage.setItem('lang', b.dataset.l); } catch {} await setSettings({ lang: b.dataset.l }); api.reloadWindow(); }));
     $$('#theme button', el).forEach((b) => (b.onclick = async () => { await setSettings({ theme: b.dataset.t }); applyTheme(b.dataset.t); $$('#theme button', el).forEach((x) => x.classList.toggle('on', x === b)); }));
     $('#pickDir', el).onclick = async () => { const d = await call(api.pickFolder); if (typeof d === 'string') { await setSettings({ saveDir: d }); toast('Save folder changed'); this.show(); } };
     const rd = $('#resetDir', el); if (rd) rd.onclick = async () => { await setSettings({ saveDir: '' }); this.show(); };

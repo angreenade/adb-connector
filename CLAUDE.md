@@ -1,6 +1,6 @@
 # ADB Connector — project notes for Claude Code
 
-Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.6.1** (see `package.json`). Owner: Moshe.
+Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.6.2** (see `package.json`). Owner: Moshe.
 
 **Rule:** every build gets a new version number in `package.json` (installer is `dist/ADB-Connector-Setup-<version>.exe`) so builds are distinguishable.
 
@@ -30,7 +30,7 @@ Installed apps check 5 s after start and every 4 h; the bottom-left rail button 
 User data (`app.getPath('userData')`): `settings.json`, `known-devices.json`, `log.txt` (first thing to ask for when something fails on the real watch), `appcache/` (icon/label cache), `library/` (kept APKs + `index.json` with items and history).
 
 ## Key decisions / gotchas
-- **Hebrew UI (`src/renderer/i18n.js`):** the UI source stays English. With `settings.lang === 'he'` a MutationObserver translates every text node and `title`/`placeholder`/`aria-label` by exact match in the `HE` dictionary, then regex `PATTERNS` for dynamic strings; `dir="rtl"`. Elements matching `SKIP` (code, terminal, app labels, device names, file names, logcat…) are never translated. A translation ending in U+2060 swallows the following space (Hebrew prefix letters like ב/ל). When adding UI text, add its Hebrew to `HE` (or a pattern); check with a crawl for leftover Latin text. Language switch reloads the window (cached in localStorage for no flash).
+- **Hebrew UI (`src/renderer/i18n.js`):** the UI source stays English. With `settings.lang === 'he'` a MutationObserver translates every text node and `title`/`placeholder`/`aria-label` by exact match in the `HE` dictionary, then regex `PATTERNS` for dynamic strings; `dir="rtl"`. Elements matching `SKIP` (code, terminal, app labels, device names, file names, logcat…) are never translated. A translation ending in U+2060 swallows the following space (Hebrew prefix letters like ב/ל). When adding UI text, add its Hebrew to `HE` (or a pattern); check with a crawl for leftover Latin text. Language switch reloads the window through IPC `reload-window` (main calls `webContents.reload()`) — `location.reload()` from the renderer is silently blocked by the `will-navigate` guard. Language is cached in localStorage for no flash.
 - **One device, two adb entries:** the watch shows as `IP:port` and as an mDNS `adb-…_adb-tls-connect._tcp` name. Devices are grouped by `ro.serialno` (`id = 'sn:…'`); `sameDevice()` in core.js handles the temporary-id switch. Don't key UI state by raw serial.
 - **Disconnect robustness:** grace period before "disconnected", `busySerials` keeps devices alive during operations, `withDevice()` waits and retries once on transient errors (TRANSIENT regex).
 - **Pairing:** `adb pair`, then the connect port is found via mDNS or a port scan (30000–60999, skipping the pairing port); manual port as fallback.

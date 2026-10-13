@@ -1330,6 +1330,8 @@ handle('webadb-begin', async () => { paused = true; await adb(['kill-server'], {
 handle('webadb-end', async () => { await startServer(); paused = false; lastJson = ''; poll(); return ok(); });
 handle('adb-version', async () => { const r = await adb(['version'], { timeout: 10000, quiet: true }); return (r.out.match(/version ([\d.]+)/) || [])[1] || null; });
 handle('app-version', () => app.getVersion());
+// renderer-initiated reloads are blocked by the will-navigate guard, so reload from here
+handle('reload-window', () => { setTimeout(() => { try { if (win && !win.isDestroyed()) win.webContents.reload(); } catch {} }, 50); return true; });
 
 
 // ───────────────────────── updates (GitHub Releases) ─────────────────────────

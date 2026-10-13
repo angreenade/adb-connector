@@ -9,7 +9,7 @@ const names = [
   'pick-files', 'pick-folder', 'save-file', 'open-file', 'show-file', 'open-folder', 'open-log', 'copy', 'copy-image',
   'app-labels', 'app-meta', 'library-list', 'library-add', 'library-remove', 'library-folder', 'history-add', 'history-clear',
   'update-state', 'update-check', 'update-download', 'update-install', 'open-releases',
-  'settings-get', 'settings-set', 'webadb-begin', 'webadb-end', 'adb-version', 'app-version',
+  'settings-get', 'settings-set', 'webadb-begin', 'webadb-end', 'adb-version', 'app-version', 'reload-window',
 ];
 const api = {};
 for (const n of names) api[n.replace(/-(\w)/g, (_, c) => c.toUpperCase())] = invoke(n);

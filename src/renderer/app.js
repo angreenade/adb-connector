@@ -114,7 +114,7 @@ document.addEventListener('keydown', (e) => {
   store.settings = s && typeof s === 'object' && !('ok' in s && s.ok === false) ? s : {};
   applyTheme(store.settings.theme);
   const lang = store.settings.lang || 'en';
-  if (lang !== earlyLang) { try { localStorage.setItem('lang', lang); } catch {} if (lang === 'he') initLanguage('he'); else { location.reload(); return; } }
+  if (lang !== earlyLang) { try { localStorage.setItem('lang', lang); } catch {} if (lang === 'he') initLanguage('he'); else { api.reloadWindow(); return; } }
   const list = await call(api.devices);
   if (Array.isArray(list)) store.devices = list;
   const v = await call(api.adbVersion);

@@ -475,7 +475,7 @@ pre.out { margin: 12px 0 0; max-height: 300px; overflow: auto; padding: 12px 14p
 .pill-tag.info { background: var(--violet-soft); color: var(--violet-text); }
 
 /* ── update button (bottom of the rail) */
-.upd-btn { margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 5px; height: 28px; padding: 0 6px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-3); font: 600 11px var(--font); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
+.upd-btn { max-width: 100%; overflow: hidden; margin-top: 6px; display: flex; align-items: center; justify-content: center; gap: 5px; height: 28px; padding: 0 6px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-3); font: 600 11px var(--font); cursor: pointer; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
 .upd-btn:hover { color: var(--ink); border-color: var(--line-2); }
 .upd-btn .ic { width: 14px; height: 14px; fill: currentColor; padding: 0; }
 .upd-btn .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--amber); flex: none; }

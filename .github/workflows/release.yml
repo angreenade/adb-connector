@@ -1,10 +1,13 @@
 name: Release
 
-# Push a tag like v2.5.0 → GitHub builds the Windows installer and publishes it as a Release.
+# Bump "version" in package.json and push to main → GitHub builds the Windows installer
+# and publishes it as Release v<version> (the tag is created automatically).
+# If that version was already released, the build skips publishing.
 # Installed apps see the new Release and offer the update.
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['package.json']
   workflow_dispatch:
 
 permissions:

@@ -14,8 +14,7 @@ npm run dist     # bundle + build the Windows installer into dist/ (needs Window
 ## Releasing (auto-update)
 Installer = NSIS one-click (per-user, no admin), `ADB-Connector-Setup-<version>.exe`. Updates via `electron-updater` from GitHub Releases of `angreenade/adb-connector` (public repo).
 1. Bump `version` in `package.json`, commit.
-2. `git tag v<version> && git push origin main --tags`
-3. `.github/workflows/release.yml` builds on `windows-latest` and publishes the Release (installer + `latest.yml` + blockmap).
+2. `git push origin main` — a push that changes `package.json` runs `.github/workflows/release.yml` on `windows-latest`, which builds and publishes Release `v<version>` (installer + `latest.yml` + blockmap; tag created by electron-builder). Already-released versions are skipped. (Tag pushes are blocked through the cloud session's git proxy, so the workflow doesn't rely on them.)
 Installed apps check 5 s after start and every 4 h; the bottom-left rail button (`src/renderer/update.js`) shows version / Update / % / Restart. IPC: `update-state|check|download|install`, event `update-state`. Unsigned → SmartScreen warning on first install only.
 `npm run bundle` = esbuild `src/renderer/app.js` → `src/renderer/bundle.js` + `bundle.css` (always re-bundle after renderer edits; `bundle.*` are generated but committed so the app runs without a build step).
 

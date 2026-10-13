@@ -22,8 +22,30 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Read version
+        id: ver
+        shell: bash
+        run: echo "v=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Skip if this version is already released
+        id: chk
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ steps.ver.outputs.v }}" >/dev/null 2>&1; then echo "skip=1" >> "$GITHUB_OUTPUT"; echo "v${{ steps.ver.outputs.v }} already released"; fi
+      - name: Create the version tag
+        if: steps.chk.outputs.skip != '1'
+        shell: bash
+        run: |
+          git fetch --tags --force
+          if ! git rev-parse "v${{ steps.ver.outputs.v }}" >/dev/null 2>&1; then
+            git tag "v${{ steps.ver.outputs.v }}"
+            git push origin "v${{ steps.ver.outputs.v }}"
+          fi
       - run: npm ci
+        if: steps.chk.outputs.skip != '1'
       - name: Build and publish installer
+        if: steps.chk.outputs.skip != '1'
         run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

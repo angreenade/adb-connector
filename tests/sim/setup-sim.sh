@@ -8,3 +8,5 @@ for c in am cmd df dumpsys getprop input logcat monkey pidof pkill pm reboot scr
 [ -f newpipe.apk ] && cp -f newpipe.apk root/app/com.example.watchface.apk
 echo '{}' > state.json
 echo "Simulator ready. Run e.g.:  xvfb-run -a node apps-test.js"
+# watched-folder test: a folder with the real APKs (termux twice to check duplicates are merged)
+mkdir -p apkdir/sub && [ -f termux-new.apk ] && cp -f termux-new.apk apkdir/ && cp -f termux-new.apk apkdir/sub/termux-copy.apk; [ -f newpipe.apk ] && cp -f newpipe.apk apkdir/sub/

@@ -740,6 +740,47 @@ function addHistory(e) {
   if (library.history.length > 1000) library.history.length = 1000;
   saveLibrary(); send('library-changed', {});
 }
+
+// watched folders: newest version of every app found in the user's APK folders (files stay where they are)
+let folderCache = null;
+const folderCacheFile = () => userFile('folder-index.json');
+function loadFolderCache() { if (!folderCache) { try { folderCache = JSON.parse(fs.readFileSync(folderCacheFile(), 'utf8')); } catch { folderCache = {}; } } return folderCache; }
+function listApkFiles(dir, depth = 0, out = []) {
+  if (depth > 4 || out.length > 5000) return out;
+  let ents = []; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return out; }
+  for (const e of ents) {
+    const f = path.join(dir, e.name);
+    if (e.isDirectory()) { if (!/^(\.|node_modules$)/.test(e.name)) listApkFiles(f, depth + 1, out); }
+    else if (/\.(apk|apks|xapk|apkm)$/i.test(e.name)) out.push(f);
+  }
+  return out;
+}
+async function scanFolders(folders) {
+  const cache = loadFolderCache();
+  const seen = new Set(); const found = []; let changed = false; const missing = [];
+  for (const dir of [].concat(folders || [])) {
+    if (!dir || !fs.existsSync(dir)) { missing.push(dir); continue; }
+    for (const f of listApkFiles(dir)) {
+      let st; try { st = fs.statSync(f); } catch { continue; }
+      seen.add(f);
+      let c = cache[f];
+      if (!c || c.size !== st.size || c.mtime !== st.mtimeMs) {
+        let m = null; try { m = await localMeta(f); } catch (e) { log('folder meta', f, e.message); }
+        c = cache[f] = { size: st.size, mtime: st.mtimeMs, pkg: m && m.pkg, label: m && m.label, versionName: m && m.versionName, versionCode: (m && m.versionCode) || 0, icon: (m && m.icon) || null };
+        changed = true;
+      }
+      if (c.pkg) found.push({ file: f, folder: dir, ...c });
+    }
+  }
+  for (const k of Object.keys(cache)) if (!seen.has(k) && !fs.existsSync(k)) { delete cache[k]; changed = true; }
+  if (changed) { try { fs.writeFileSync(folderCacheFile(), JSON.stringify(cache)); } catch (e) { log('folder cache', e); } }
+  // newest per package (highest versionCode; same code → newest file)
+  const best = new Map(); const counts = {};
+  for (const x of found) { counts[x.pkg] = (counts[x.pkg] || 0) + 1; const b = best.get(x.pkg); if (!b || x.versionCode > b.versionCode || (x.versionCode === b.versionCode && x.mtime > b.mtime)) best.set(x.pkg, x); }
+  const icons = {};
+  const items = [...best.values()].map((x) => { if (x.icon) icons[x.pkg] = x.icon; return { id: 'f:' + crypto.createHash('sha1').update(x.file).digest('hex').slice(0, 16), pkg: x.pkg, label: x.label || null, versionName: x.versionName || null, versionCode: x.versionCode, size: x.size, addedAt: x.mtime, paths: [x.file], split: false, source: 'folder', folder: x.folder, name: path.basename(x.file), copies: counts[x.pkg] }; });
+  return { items, icons, files: found.length, missing };
+}
 function libraryList() {
   loadLibrary();
   const icons = {};
@@ -1289,6 +1330,8 @@ handle('extract-apk', async (_e, id, pkg) => {
 handle('app-labels', (_e, id, force) => appLabels(id, force));
 handle('app-meta', (_e, id, pkgs) => appMeta(id, pkgs || []));
 handle('library-list', () => libraryList());
+handle('folders-scan', (_e, folders) => scanFolders(folders));
+handle('show-folder', (_e, d) => shell.openPath(d));
 handle('library-add', async (_e, files) => {
   const list = [].concat(files || []); let n = 0, bad = 0;
   const apks = list.filter((f) => /\.apk$/i.test(f)), bundles = list.filter((f) => /\.(apks|xapk|apkm)$/i.test(f));

@@ -459,7 +459,7 @@ pre.out { margin: 12px 0 0; max-height: 300px; overflow: auto; padding: 12px 14p
 .lib-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); min-width: 0; }
 .lib-card:hover { border-color: var(--line-2); box-shadow: var(--shadow-1); }
 .lib-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.lib-text .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-text .small { line-height: 1.45; }
 .apps-page .panel-head h3 { flex: 1; margin: 0; }
 .lib-text b { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lib-text code { font: 11.5px var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -512,3 +512,25 @@ pre.out { margin: 12px 0 0; max-height: 300px; overflow: auto; padding: 12px 14p
 [dir=rtl] .switch::after { left: auto; right: 3px; }
 [dir=rtl] .switch:checked::after { transform: translateX(-18px); }
 [dir=rtl] .switch-inline .switch:checked::after { transform: translateX(-16px); }
+
+/* ── watched APK folders + updates */
+.folders-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; padding: 8px 12px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line); font-size: 13px; }
+.folders-bar > .ic { width: 18px; height: 18px; fill: var(--violet); }
+.fb-title { font-weight: 600; color: var(--ink); }
+.fb-chip { display: inline-flex; align-items: center; border-radius: 99px; background: var(--violet-soft); color: var(--violet-text); }
+.fb-chip.missing { background: var(--red-soft); color: var(--red); }
+.fb-chip button { border: 0; background: none; color: inherit; cursor: pointer; font: 600 12.5px var(--font); }
+.fb-open { padding: 4px 4px 4px 12px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[dir=rtl] .fb-open { padding: 4px 12px 4px 4px; }
+.fb-x { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; }
+.fb-x:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
+.fb-x .ic { width: 14px; height: 14px; fill: currentColor; }
+.fb-info { display: inline-flex; align-items: center; gap: 6px; }
+.icon-btn.sm { width: 28px; height: 28px; } .icon-btn.sm .ic { width: 16px; height: 16px; }
+.upd-banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 10px; border-radius: var(--r-md); background: var(--violet-soft); color: var(--violet-text); }
+.upd-banner > .ic { width: 22px; height: 22px; fill: currentColor; flex: none; }
+.upd-banner > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.upd-banner b { color: var(--ink); } .upd-banner .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-row .btn.upd { color: var(--violet-text); }
+.lib-card.has-upd { border-color: var(--violet); }
+.upd-text { color: var(--violet-text); font-weight: 600; }

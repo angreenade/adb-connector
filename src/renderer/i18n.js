@@ -134,6 +134,8 @@ const HE = {
   'This copy runs without being installed, so it can\'t update itself. Install ADB Connector once with the setup file from the releases page — after that, updates arrive here with one click.': 'העותק הזה רץ בלי התקנה, ולכן לא יכול להתעדכן. התקינו את ADB Connector פעם אחת עם קובץ ההתקנה מדף הגרסאות — ואחר כך העדכונים מגיעים בלחיצה.', 'This copy runs without being installed, so it can’t update itself. Install ADB Connector once with the setup file from the releases page — after that, updates arrive here with one click.': 'העותק הזה רץ בלי התקנה, ולכן לא יכול להתעדכן. התקינו את ADB Connector פעם אחת עם קובץ ההתקנה מדף הגרסאות — ואחר כך העדכונים מגיעים בלחיצה.',
 
   // ── misc
+  'APK folders': 'תיקיות APK', 'Add folder': 'הוספת תיקייה', 'Stop watching this folder': 'הפסקת מעקב אחרי התיקייה', 'Scan the folders again': 'סריקה מחדש של התיקיות', 'Scanning…': 'סורק…', 'Update all': 'עדכון הכול', '1 update available': 'יש עדכון אחד', 'update available': 'יש עדכון', 'folder': 'תיקייה',
+  'Pick a folder with APK files — the newest version of each app is shown here, with updates for apps on the device.': 'בחרו תיקייה עם קבצי APK — הגרסה החדשה ביותר של כל אפליקציה תוצג כאן, עם עדכונים לאפליקציות שבמכשיר.',
   'Restarting…': 'מפעיל מחדש…', 'Restarting into the new version…': 'מפעיל מחדש לגרסה החדשה…', 'Update downloaded. Restarting…': 'העדכון הורד. מפעיל מחדש…', 'The update could not be downloaded': 'לא ניתן להוריד את העדכון', 'The update could not be downloaded. Check the internet connection and try again.': 'לא ניתן להוריד את העדכון. בדקו את החיבור לאינטרנט ונסו שוב.',
   'Debug and above': 'ניפוי ומעלה', 'Errors only': 'שגיאות בלבד', 'Everything': 'הכול', 'Info and above': 'מידע ומעלה', 'Warnings and errors': 'אזהרות ושגיאות', 'Auto-scroll': 'גלילה אוטומטית', 'Bigger number = smaller items': 'מספר גדול = פריטים קטנים', 'Grant permission': 'הענקת הרשאה', 'My apps': 'האפליקציות שלי', 'Temp': 'טמפ׳',
   'Tap': 'הקישו', 'and type the': 'והקלידו את', 'on the phone.': 'בטלפון.', 'or': 'או', 'shown there.': 'שמוצג שם.',
@@ -143,6 +145,7 @@ const HE = {
 
 // dynamic messages (anything with a name or number inside)
 const PATTERNS = [
+  [/^(\d+) apps found$/, 'נמצאו $1 אפליקציות'], [/^(\d+) updates available$/, 'יש $1 עדכונים'], [/^Update · v(.+)$/, 'עדכון · v$1'],
   [/^Updating to (.+?) — the app restarts by itself when it's done$/, 'מעדכן ל-$1 — האפליקציה תופעל מחדש לבד כשיסתיים'], [/^Updating to (.+)…$/, 'מעדכן ל-$1…'], [/^Version (.+) is ready — click to update$/, 'גרסה $1 מוכנה — לחצו לעדכון'],
   [/^Update downloaded — only (\d+) MB instead of (\d+) MB\. Restarting…$/, 'העדכון הורד — רק $1MB במקום $2MB. מפעיל מחדש…'], [/^(\d+)%$/, '$1%'],
   [/^(.+) \(Ctrl\+(\d)\)$/, (m, a, n) => `${HE[a] || a} (Ctrl+${n})`], [/^Charging, (.+)$/, 'בטעינה, $1'], [/^On battery, (.+)$/, 'על סוללה, $1'], [/^Not charging, (.+)$/, 'לא בטעינה, $1'], [/^Default \((.+)\)$/, 'ברירת מחדל ($1)'],

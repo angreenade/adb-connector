@@ -68,6 +68,7 @@ export const page = {
           <label class="check"><input type="checkbox" data-opt="downgrade" ${s.downgrade ? 'checked' : ''}><span>Allow downgrade</span></label>
           <label class="check"><input type="checkbox" data-opt="test" ${s.test ? 'checked' : ''}><span>Allow test apps</span></label>
         </div>
+        <div class="folders-bar" id="foldersBar"></div>
         <div class="tabs" id="appTabs" role="tablist">
           <button data-t="device" class="${this.tab === 'device' ? 'on' : ''}">${icon('apps')}On this device</button>
           <button data-t="library" class="${this.tab === 'library' ? 'on' : ''}">${icon('library')}My library</button>
@@ -80,6 +81,7 @@ export const page = {
             <label class="switch-inline" title="Show the technical package name (like app.relink) under each app"><input type="checkbox" class="switch" id="showPkg" ${this.showPkg() ? 'checked' : ''}><span>Package names</span></label>
             <button class="icon-btn" id="appRefresh" title="Refresh">${icon('refresh')}</button>
           </div>
+          <div id="updBanner" class="upd-banner hidden"></div>
           <div id="appList" class="app-list"></div>
         </section>
         <section class="panel" data-tab="library" ${this.tab === 'library' ? '' : 'hidden'}>
@@ -122,6 +124,66 @@ export const page = {
     ld.addEventListener('drop', (e) => { e.stopPropagation(); const files = [...e.dataTransfer.files].map((f) => api.pathForFile(f)).filter(Boolean); this.addToLibrary(files); });
     $('#histClear', el).onclick = async () => { if (await confirmDialog('Clear the install history?', { detail: 'Apps saved in your library are kept.', ok: 'Clear history' })) { report(await api.historyClear()); this.loadLibrary(); } };
     if (this.tab !== 'device') this.loadLibrary();
+    this.renderFolders();
+  },
+  // ── watched APK folders
+  folders() { return (store.settings.apps && store.settings.apps.folders) || []; },
+  async setFolders(list) { await setSettings({ apps: { ...(store.settings.apps || {}), folders: list } }); this.renderFolders(); await this.scanFolders(); },
+  renderFolders() {
+    const bar = $('#foldersBar', this.el); if (!bar) return;
+    const fs = this.folders();
+    const n = this.folder ? this.folder.items.length : 0;
+    bar.innerHTML = `${icon('folder')}<span class="fb-title">APK folders</span>
+      ${fs.map((f, i) => `<span class="fb-chip${this.folder && this.folder.missing.includes(f) ? ' missing' : ''}" title="${esc(f)}"><button class="fb-open" data-fo="${i}">${esc(f.split(/[\\/]/).filter(Boolean).pop() || f)}</button><button class="fb-x" data-fx="${i}" title="Stop watching this folder">${icon('close')}</button></span>`).join('')}
+      <button class="btn text sm" id="fbAdd">${icon('add')}Add folder</button>
+      ${fs.length ? `<span class="fb-info muted small">${this.scanning ? '<span class="spinner tiny"></span> Scanning…' : `${n} apps found`}</span><button class="icon-btn sm" id="fbScan" title="Scan the folders again">${icon('refresh')}</button>` : '<span class="fb-info muted small">Pick a folder with APK files — the newest version of each app is shown here, with updates for apps on the device.</span>'}`;
+    $('#fbAdd', bar).onclick = async () => { const d = await api.pickFolder(); if (d && !this.folders().includes(d)) this.setFolders([...this.folders(), d]); };
+    const sc = $('#fbScan', bar); if (sc) sc.onclick = () => this.scanFolders();
+    bar.querySelectorAll('[data-fx]').forEach((b) => (b.onclick = () => this.setFolders(this.folders().filter((_, i) => i !== +b.dataset.fx))));
+    bar.querySelectorAll('[data-fo]').forEach((b) => (b.onclick = () => api.showFolder(this.folders()[+b.dataset.fo])));
+  },
+  async scanFolders() {
+    const fs = this.folders();
+    if (!fs.length) { this.folder = { items: [], icons: {}, missing: [] }; this.afterScan(); return; }
+    if (this.scanning) return this.scanning;
+    this.renderFolders();
+    this.scanning = api.foldersScan(fs).then((r) => { this.folder = r && r.items ? r : { items: [], icons: {}, missing: [] }; }).catch(() => {}).finally(() => { this.scanning = null; this.afterScan(); });
+    this.renderFolders();
+    return this.scanning;
+  },
+  afterScan() { this.renderFolders(); this.computeUpdates(); this.renderList(); if (this.lib) this.renderLibrary(); },
+  // newest copy of each package from the library and the folders
+  candidates() {
+    const best = new Map();
+    const add = (it) => { if (!it || !it.pkg || !it.versionCode) return; const b = best.get(it.pkg); if (!b || it.versionCode > b.versionCode || (it.versionCode === b.versionCode && it.source === 'folder')) best.set(it.pkg, it); };
+    for (const it of (this.folder && this.folder.items) || []) add(it);
+    for (const it of (this.lib && this.lib.items) || []) add(it);
+    return best;
+  },
+  computeUpdates() {
+    this.updates = new Map();
+    if (!this.installedVer) return this.renderBanner();
+    for (const [pkg, it] of this.candidates()) { const cur = this.installedVer.get(pkg); if (cur != null && it.versionCode > cur) this.updates.set(pkg, it); }
+    this.renderBanner();
+  },
+  renderBanner() {
+    const b = $('#updBanner', this.el); if (!b) return;
+    const n = this.updates ? this.updates.size : 0;
+    b.classList.toggle('hidden', !n);
+    if (!n) return;
+    const names = [...this.updates.keys()].map((p) => this.label(p));
+    b.innerHTML = `${icon('up')}<div><b>${n === 1 ? '1 update available' : `${n} updates available`}</b><span class="muted small">${esc(names.slice(0, 4).join(', '))}${names.length > 4 ? ` +${names.length - 4}` : ''}</span></div><button class="btn filled sm" id="updAll">${n === 1 ? 'Update' : 'Update all'}</button>`;
+    $('#updAll', b).onclick = () => this.updateAll();
+  },
+  async updateAll() {
+    const list = [...this.updates.values()];
+    for (const it of list) { if (!this.dev()) break; await this.installItem(it); }
+  },
+  async loadVersions(dev) {
+    const out = await ops(dev).text('pm list packages --show-versioncode 2>/dev/null', 30000);
+    const m = new Map();
+    for (const l of out.split(/\r?\n/)) { const x = l.trim().match(/^package:(\S+)\s+versionCode:(\d+)/); if (x) m.set(x[1], +x[2]); }
+    this.installedVer = m.size ? m : null;
   },
   setTab(t) {
     this.tab = t;
@@ -179,7 +241,11 @@ export const page = {
     const out = await ops(dev).text(`pm list packages ${flag} 2>/dev/null`, 30000);
     this.disabled = new Set(this.filter === 'disabled' ? [] : (await ops(dev).text('pm list packages -d 2>/dev/null', 20000)).split(/\r?\n/).map((l) => l.replace(/^package:/, '').trim()).filter(Boolean));
     this.apps = out.split(/\r?\n/).map((l) => l.replace(/^package:/, '').trim()).filter(Boolean);
+    await this.loadVersions(dev).catch(() => {});
+    if (!this.lib && !dev.web) this.lib = await api.libraryList().catch(() => null);
+    this.computeUpdates();
     this.renderList();
+    if (!dev.web && (fresh || !this.folder)) this.scanFolders();
     if (!dev.web) {
       const token = (this.loadToken = (this.loadToken || 0) + 1);
       api.appLabels(dev.id, !!fresh).then((r) => { if (token !== this.loadToken || !r || !r.ok) return; this.labels = r.labels || {}; this.renderList(); }).catch(() => {});
@@ -197,6 +263,7 @@ export const page = {
         ${appIcon(this.meta[p], p, name)}
         <div class="app-text"><b class="app-label">${esc(name)}</b>${showPkg ? `<code class="app-pkg">${esc(p)}</code>` : ''}</div>
         ${isDis(p) ? '<span class="tag">Disabled</span>' : ''}
+        ${this.updates && this.updates.has(p) ? `<button class="btn tonal sm upd" data-a="update" title="${esc(this.updates.get(p).name || '')}">${icon('up')}Update · v${esc(this.updates.get(p).versionName || this.updates.get(p).versionCode)}</button>` : ''}
         <button class="btn text sm" data-a="open">${icon('play')}Open</button>
         <button class="btn text sm" data-a="info">${icon('shield')}Permissions</button>
         <button class="icon-btn" data-a="more" title="More">${icon('more')}</button>
@@ -206,6 +273,7 @@ export const page = {
       const row = e.target.closest('.app-row'); if (!row) return;
       const a = e.target.closest('[data-a]')?.dataset.a, p = row.dataset.p;
       if (a === 'open') return this.act('open', p);
+      if (a === 'update') return this.installItem(this.updates.get(p));
       if (a === 'info' || (!a && e.detail === 2)) return this.details(p);
       if (a === 'more') showMenu(e.target.closest('button'), [
         { label: 'Open', icon: 'play', run: () => this.act('open', p) },
@@ -268,34 +336,39 @@ export const page = {
     const box = $('#libList', this.el); if (!box || !this.lib) return;
     const showPkg = this.showPkg();
     const groups = new Map();
-    for (const it of this.lib.items) { if (!groups.has(it.pkg)) groups.set(it.pkg, []); groups.get(it.pkg).push(it); }
+    const all = [...this.lib.items, ...((this.folder && this.folder.items) || [])];
+    for (const it of all) { if (!groups.has(it.pkg)) groups.set(it.pkg, []); const g = groups.get(it.pkg); if (!g.some((x) => x.versionCode === it.versionCode && x.size === it.size)) g.push(it); }
+    const iconOf = (pkg) => this.lib.icons[pkg] || (this.folder && this.folder.icons[pkg]);
     let apps = [...groups].map(([pkg, vers]) => { vers.sort((a, b) => (b.versionCode - a.versionCode) || (b.addedAt - a.addedAt)); return { pkg, vers, label: vers.find((v) => v.label)?.label || this.label(pkg) }; });
     const qq = this.libQuery || '';
     if (qq) apps = apps.filter((a) => a.label.toLowerCase().includes(qq) || a.pkg.toLowerCase().includes(qq));
     apps.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }));
-    if (!this.lib.items.length) { box.innerHTML = '<div class="empty-inline small">Your library is empty. Apps you install from this computer appear here automatically, so you can put them back with one click — any version.</div>'; return; }
+    if (!all.length) { box.innerHTML = '<div class="empty-inline small">Your library is empty. Apps you install from this computer appear here automatically, so you can put them back with one click — any version.</div>'; return; }
     if (!apps.length) { box.innerHTML = '<div class="empty-inline small">No apps match your search.</div>'; return; }
     const installed = new Set(this.apps);
     box.innerHTML = apps.map((a) => {
       const v = a.vers[0];
-      return `<div class="lib-card" data-pkg="${esc(a.pkg)}">
-        ${appIcon({ icon: this.lib.icons[a.pkg] }, a.pkg, a.label, 'lg')}
+      const cur = this.installedVer && this.installedVer.get(a.pkg);
+      const isUpd = cur != null && v.versionCode > cur;
+      return `<div class="lib-card${isUpd ? ' has-upd' : ''}" data-pkg="${esc(a.pkg)}">
+        ${appIcon({ icon: iconOf(a.pkg) }, a.pkg, a.label, 'lg')}
         <div class="lib-text"><b>${esc(a.label)}</b>${showPkg ? `<code>${esc(a.pkg)}</code>` : ''}
-          <span class="muted small">${esc(v.versionName ? 'v' + v.versionName : 'version ' + (v.versionCode || '?'))} · ${fmtBytes(v.size)}${a.vers.length > 1 ? ` · ${a.vers.length} versions` : ''}${installed.has(a.pkg) ? ' · <span class="ok-text">on this device</span>' : ''}</span></div>
-        <div class="lib-actions"><button class="btn tonal sm" data-li="${esc(v.id)}">${icon('download')}Install</button><button class="icon-btn" data-lm title="Versions and more">${icon('more')}</button></div>
+          <span class="muted small">${esc(v.versionName ? 'v' + v.versionName : 'version ' + (v.versionCode || '?'))} · ${fmtBytes(v.size)}${a.vers.length > 1 ? ` · ${a.vers.length} versions` : ''}${isUpd ? ' · <span class="upd-text">update available</span>' : installed.has(a.pkg) ? ' · <span class="ok-text">on this device</span>' : ''}${v.source === 'folder' ? ' · <span class="tag">folder</span>' : ''}</span></div>
+        <div class="lib-actions"><button class="btn ${isUpd ? 'filled' : 'tonal'} sm" data-li="${esc(v.id)}">${icon(isUpd ? 'up' : 'download')}${isUpd ? 'Update' : 'Install'}</button><button class="icon-btn" data-lm title="Versions and more">${icon('more')}</button></div>
       </div>`;
     }).join('');
     box.onclick = (e) => {
       const card = e.target.closest('.lib-card'); if (!card) return;
       const g = groups.get(card.dataset.pkg);
       const li = e.target.closest('[data-li]');
-      if (li) return this.installItem(this.lib.items.find((x) => x.id === li.dataset.li));
+      if (li) return this.installItem(g.find((x) => x.id === li.dataset.li));
       if (e.target.closest('[data-lm]')) showMenu(e.target.closest('button'), [
         ...g.map((v) => ({ label: `Install ${v.versionName ? 'v' + v.versionName : 'version ' + v.versionCode} (${when(v.addedAt)})`, icon: 'download', run: () => this.installItem(v) })),
         '-',
         { label: 'Show file', icon: 'folder', run: () => api.showFile(g[0].paths[0]) },
+        ...(g.some((v) => v.source === 'folder') ? [] : []),
         { label: 'Copy package name', icon: 'copy', run: () => { api.copy(card.dataset.pkg); toast(`Copied ${card.dataset.pkg}`); } },
-        ...g.map((v) => ({ label: `Remove ${v.versionName ? 'v' + v.versionName : 'version ' + v.versionCode} from library`, icon: 'delete', danger: true, run: async () => { if (await confirmDialog('Remove from your library?', { detail: `${this.lib.items.find((x) => x.id === v.id)?.label || v.pkg} ${v.versionName || ''} — the file is deleted from this computer. The app on the device is not touched.`, ok: 'Remove', danger: true })) { report(await api.libraryRemove(v.id)); this.loadLibrary(); } } })),
+        ...g.filter((v) => v.source !== 'folder').map((v) => ({ label: `Remove ${v.versionName ? 'v' + v.versionName : 'version ' + v.versionCode} from library`, icon: 'delete', danger: true, run: async () => { if (await confirmDialog('Remove from your library?', { detail: `${this.lib.items.find((x) => x.id === v.id)?.label || v.pkg} ${v.versionName || ''} — the file is deleted from this computer. The app on the device is not touched.`, ok: 'Remove', danger: true })) { report(await api.libraryRemove(v.id)); this.loadLibrary(); } } })),
       ]);
     };
   },
@@ -303,7 +376,7 @@ export const page = {
     if (!it) return;
     const dev = this.dev();
     if (dev && dev.web) return toast('Installing from the library works with Wi-Fi and USB connections', { error: true });
-    this.install(it.paths, { asSplit: it.split });
+    return this.install(it.paths, { asSplit: it.split });
   },
   renderHistory() {
     const box = $('#histList', this.el); if (!box || !this.lib) return;

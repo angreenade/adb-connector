@@ -37,8 +37,10 @@ switch (name) {
     out('');
   }
   case 'pm': {
-    const user = ['app.relink', 'com.example.watchface', 'com.moshe.timer', ...pkgs()];
+    const user = ['app.relink', 'com.example.watchface', 'com.moshe.timer', 'com.termux', ...pkgs()];
+    const VER = { 'app.relink': 30400, 'com.example.watchface': 5, 'com.moshe.timer': 1, 'com.termux': 1000, ...(fs.existsSync(path.join(SIM, 'versions.json')) ? JSON.parse(fs.readFileSync(path.join(SIM, 'versions.json'), 'utf8')) : {}) };
     const sys = ['android', 'com.android.settings', 'com.google.android.wearable.app', 'com.samsung.android.health'];
+    if (a[0] === 'list' && a[1] === 'packages' && a.includes('--show-versioncode')) out([...user, ...sys].map((p) => `package:${p} versionCode:${VER[p] || 1}`).join('\n') + '\n');
     if (a[0] === 'list' && a[1] === 'packages' && a[2] === '-f') out([...user, ...sys].map((p) => `package:${path.join(SIM, 'root/app', p + '.apk')}=${p}`).join('\n') + '\n');
     if (a[0] === 'list' && a[1] === 'packages') { const f = a[2]; const l = f === '-3' ? user : f === '-s' ? sys : f === '-d' ? (S.disabled || []) : [...user, ...sys]; out(l.map((p) => 'package:' + p).join('\n') + '\n'); }
     if (a[0] === 'path') out(`package:${path.join(SIM, 'root/app/base.apk')}\n`);

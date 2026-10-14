@@ -47,6 +47,7 @@ switch (a[0]) {
     if (!files.every((f) => fs.existsSync(f))) out('adb: failed to stat\n', 1);
     if (files.some((f) => /old/.test(path.basename(f))) && !fs.existsSync(path.join(SIM, 'removed.flag'))) out('Performing Streamed Install\nadb: failed to install old.apk: Failure [INSTALL_FAILED_VERSION_DOWNGRADE: Downgrade detected: Update version code 30301 is older than current 30400]\n', 1);
     if (files.some((f) => /bad/.test(path.basename(f)))) out('Performing Streamed Install\nadb: failed to install x.apk: Failure [INSTALL_FAILED_UPDATE_INCOMPATIBLE: Package signatures do not match]\n', 1);
+    if (files.some((f) => /termux/i.test(path.basename(f)))) { const vf = path.join(SIM, 'versions.json'); const v = fs.existsSync(vf) ? JSON.parse(fs.readFileSync(vf, 'utf8')) : {}; v['com.termux'] = 1002; fs.writeFileSync(vf, JSON.stringify(v)); }
     const pk = path.join(SIM, 'packages.txt'); fs.appendFileSync(pk, '\ncom.sim.' + path.basename(files[0]).replace(/\W+/g, '').toLowerCase());
     out('Performing Streamed Install\nSuccess\n');
   }

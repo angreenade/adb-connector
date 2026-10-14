@@ -6,7 +6,7 @@ name: Release
 on:
   push:
     branches: [main]
-    paths: ['package.json', '.github/workflows/release.yml']
+    paths: ['package.json']
   workflow_dispatch:
 
 permissions:
@@ -18,8 +18,8 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -44,6 +44,7 @@ jobs:
         shell: bash
         run: |
           T="${{ steps.ver.outputs.tag }}"
-          gh release view "$T" >/dev/null 2>&1 || gh release create "$T" --target "$GITHUB_SHA" --title "ADB Connector ${T#v}" --notes "Download **ADB-Connector-Setup-${T#v}.exe** below and run it. Already installed? The app updates itself — use the button at the bottom left."
+          bash .github/notes.sh "${T#v}" > notes.md
+          gh release view "$T" >/dev/null 2>&1 || gh release create "$T" --target "$GITHUB_SHA" --title "ADB Connector ${T#v}" --notes-file notes.md
           gh release upload "$T" dist/ADB-Connector-Setup-*.exe dist/ADB-Connector-Setup-*.exe.blockmap dist/latest.yml --clobber
           gh release edit "$T" --draft=false --latest

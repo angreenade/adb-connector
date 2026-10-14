@@ -2,6 +2,8 @@
 
 A simple Windows app for **any Android device** — phones, tablets and watches (including Galaxy Watch / Wear OS) — over USB or Wi‑Fi, without the command line.
 
+<p align="center"><img src="docs/overview.png" alt="ADB Connector — device overview" width="760"></p>
+
 ## Download
 Get **ADB-Connector-Setup-x.y.z.exe** from [Releases](https://github.com/angreenade/adb-connector/releases/latest) and run it. It installs in seconds (no admin needed) and **updates itself** — watch the button at the bottom left.
 
@@ -16,6 +18,11 @@ Windows may say "Windows protected your PC" the first time (the app isn't code-s
 - **Shell**: a full terminal with history, autocomplete and long-command support
 - **Logcat** with filters, and **quick commands** by category (display, power, network, developer and more)
 - Several devices at once — switch from the top bar
+
+<p align="center">
+  <img src="docs/screen.png" alt="Screen mirroring and controls" width="49%">
+  <img src="docs/apps.png" alt="Apps with names, library and updates" width="49%">
+</p>
 
 ## Connecting a device
 Turn on **Developer options** on the device (tap *Build number* 7 times in *About phone* / *About watch*), then:
@@ -38,6 +45,11 @@ npm start        # run in development
 npm run dist     # build the Windows installer
 ```
 Releases are built by GitHub Actions when the version in `package.json` changes. Includes scrcpy 3.3.1 and adb (`vendor/platform`).
+
+## Privacy
+Everything runs on your computer — no account, no analytics. The only internet connection is the update check against GitHub Releases. See [SECURITY.md](SECURITY.md).
+
+What's new in each version: [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 ADB Connector is free software under the [MIT License](LICENSE).

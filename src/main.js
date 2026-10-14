@@ -1382,7 +1382,7 @@ handle('reload-window', () => { setTimeout(() => { try { if (win && !win.isDestr
 let quitting = false;
 let updater = null;
 let installWhenReady = false, dlBytes = 0, dlTotal = 0;
-function installNow() { if (!updater) return; quitting = true; for (const sid of [...streams.keys()]) closeStream(sid); for (const sid of [...mirrors.keys()]) stopMirror(sid, null); setTimeout(() => updater.quitAndInstall(true, true), 300); }
+function installNow() { if (!updater) return; quitting = true; for (const sid of [...streams.keys()]) closeStream(sid); for (const sid of [...mirrors.keys()]) stopMirror(sid, null); setTimeout(() => updater.quitAndInstall(false, true), 300); }
 let updateState = { state: 'idle', current: app.getVersion() };
 function setUpdate(patch) { updateState = { ...updateState, ...patch, current: app.getVersion() }; send('update-state', updateState); }
 function canUpdate() { return app.isPackaged && isWin && !process.env.PORTABLE_EXECUTABLE_DIR; }
@@ -1392,26 +1392,29 @@ function initUpdater() {
   updater.autoDownload = false;
   updater.autoInstallOnAppQuit = true;
   updater.logger = { info: (m) => log('update', m), warn: (m) => log('update warn', m), error: (m) => log('update error', m), debug: () => {} };
-  updater.on('checking-for-update', () => { if (!['downloading', 'ready', 'installing'].includes(updateState.state)) setUpdate({ state: 'checking' }); });
+  updater.on('checking-for-update', () => { if (!['downloading', 'verifying', 'ready', 'installing'].includes(updateState.state)) setUpdate({ state: 'checking' }); });
   updater.on('update-available', (i) => setUpdate({ state: 'available', version: i.version, notes: typeof i.releaseNotes === 'string' ? i.releaseNotes.replace(/<[^>]+>/g, '').trim().slice(0, 2000) : '', date: i.releaseDate }));
   updater.on('update-not-available', () => setUpdate({ state: 'none', checkedAt: Date.now() }));
   // electron-updater reports odd percentages during differential (patch) downloads → compute and clamp it ourselves
+  // download progress 0–100; once the bytes are all in, electron-updater still rebuilds and checks the
+  // installer (no events) → show that as its own step instead of a frozen 99 %
   updater.on('download-progress', (p) => {
     let pct = p.total > 0 ? (p.transferred / p.total) * 100 : +p.percent || 0;
     if (!(pct >= 0)) pct = 0;
-    pct = Math.min(99, Math.max(updateState.percent || 0, Math.floor(pct)));
+    pct = Math.min(100, Math.max(updateState.percent || 0, Math.floor(pct)));
     dlBytes = Math.max(dlBytes, p.transferred || 0); dlTotal = p.total || dlTotal;
+    if (pct >= 100) { if (updateState.state !== 'verifying') setUpdate({ state: 'verifying', percent: 100 }); return; }
     if (pct !== updateState.percent || updateState.state !== 'downloading') setUpdate({ state: 'downloading', percent: pct });
   });
   updater.on('update-downloaded', (i) => {
     const full = (i.files && i.files[0] && i.files[0].size) || 0;
     const patch = dlBytes > 0 && full > 0 && dlBytes < full * 0.8;
     log('update downloaded', i.version, 'bytes', dlBytes, 'of full', full);
-    if (installWhenReady) { setUpdate({ state: 'installing', version: i.version, percent: 100, patchMB: patch ? Math.max(1, Math.round(dlBytes / 1048576)) : 0, fullMB: Math.round(full / 1048576) }); setTimeout(installNow, 1800); }
+    if (installWhenReady) { setUpdate({ state: 'installing', version: i.version, percent: 100, patchMB: patch ? Math.max(1, Math.round(dlBytes / 1048576)) : 0, fullMB: Math.round(full / 1048576) }); setTimeout(installNow, 1500); }
     else setUpdate({ state: 'ready', version: i.version, percent: 100 });
   });
   updater.on('error', (e) => { log('update error', e && e.message); setUpdate({ state: updateState.state === 'downloading' ? 'available' : 'error', msg: /net::|ENOTFOUND|ETIMEDOUT|ECONN/i.test(String(e && e.message)) ? 'No internet connection' : 'Could not check for updates' }); });
-  const check = () => { if (['downloading', 'ready', 'installing'].includes(updateState.state)) return; updater.checkForUpdates().catch(() => {}); };
+  const check = () => { if (['downloading', 'verifying', 'ready', 'installing'].includes(updateState.state)) return; updater.checkForUpdates().catch(() => {}); };
   setTimeout(check, 5000);
   setInterval(check, 4 * 60 * 60 * 1000);
 }
@@ -1421,7 +1424,7 @@ handle('update-check', async () => { if (!updater) return updateState; try { awa
 handle('update-download', async () => {
   if (!updater) return { ok: false };
   if (updateState.state === 'ready') { setUpdate({ state: 'installing' }); setTimeout(installNow, 800); return { ok: true }; }
-  if (updateState.state === 'downloading' || updateState.state === 'installing') return { ok: true };
+  if (['downloading', 'verifying', 'installing'].includes(updateState.state)) return { ok: true };
   installWhenReady = true; dlBytes = 0; dlTotal = 0;
   setUpdate({ state: 'downloading', percent: 0 });
   try { await updater.downloadUpdate(); return { ok: true }; } catch (e) { installWhenReady = false; setUpdate({ state: 'available', percent: 0 }); return { ok: false, msg: 'The update could not be downloaded. Check the internet connection and try again.' }; }

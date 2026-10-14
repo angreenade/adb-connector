@@ -1,6 +1,6 @@
 {
   "name": "adb-connector",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "description": "Simple ADB & WebADB connector for Android",
   "main": "src/main.js",
   "scripts": {

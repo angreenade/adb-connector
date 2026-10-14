@@ -1,6 +1,6 @@
 # ADB Connector — project notes for Claude Code
 
-Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.7.1** (see `package.json`). Owner: Moshe.
+Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.7.2** (see `package.json`). Owner: Moshe.
 
 **Rule:** every build gets a new version number in `package.json` (installer is `dist/ADB-Connector-Setup-<version>.exe`) so builds are distinguishable.
 
@@ -15,7 +15,7 @@ npm run dist     # bundle + build the Windows installer into dist/ (needs Window
 Installer = NSIS one-click (per-user, no admin), `ADB-Connector-Setup-<version>.exe`. Updates via `electron-updater` from GitHub Releases of `angreenade/adb-connector` (public repo).
 1. Bump `version` in `package.json`, commit.
 2. `git push origin main` — a push that changes `package.json` runs `.github/workflows/release.yml` on `windows-latest`, which builds with `npm run dist` and uploads installer + `latest.yml` + blockmap to Release `v<version>` with `gh release` (creates the release/tag). Versions whose release already has `latest.yml` are skipped. (Tag pushes are blocked through the cloud session's git proxy, so the workflow doesn't rely on them.)
-Installed apps check 5 s after start and every 4 h; the bottom-left rail button (`src/renderer/update.js`) shows version → Update → % → restarts by itself (one click; `installWhenReady` in main). Updates are differential: electron-updater downloads only changed blocks using the `.blockmap` files (the NSIS installer keeps a copy of itself in `%LOCALAPPDATA%\adb-connector-updater`); its own `percent` is wrong for differential downloads, so main computes and clamps it. IPC: `update-state|check|download|install`, event `update-state`. Unsigned → SmartScreen warning on first install only.
+Installed apps check 5 s after start and every 4 h; the bottom-left rail button (`src/renderer/update.js`) shows version → Update → % → restarts by itself (one click; `installWhenReady` in main). Updates are differential: electron-updater downloads only changed blocks using the `.blockmap` files (the NSIS installer keeps a copy of itself in `%LOCALAPPDATA%\adb-connector-updater`); its own `percent` is wrong for differential downloads, so main computes it (0–100); after 100 % the updater rebuilds+verifies the installer without events → state `verifying` ("Preparing…"). Install runs `quitAndInstall(false, true)` (non-silent: the NSIS progress window is visible) after a full-window "Installing the update" overlay. IPC: `update-state|check|download|install`, event `update-state`. Unsigned → SmartScreen warning on first install only.
 `npm run bundle` = esbuild `src/renderer/app.js` → `src/renderer/bundle.js` + `bundle.css` (always re-bundle after renderer edits; `bundle.*` are generated but committed so the app runs without a build step).
 
 ## Layout

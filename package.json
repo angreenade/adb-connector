@@ -1,6 +1,6 @@
 {
   "name": "adb-connector",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "Simple ADB & WebADB connector for Android",
   "main": "src/main.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "dist": "npm run bundle && electron-builder --win nsis --x64",
     "release": "npm run bundle && electron-builder --win nsis --x64 --publish always"
   },
-  "author": "Moshe",
+  "author": "Moshe Greenblatt",
   "devDependencies": {
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
@@ -45,6 +45,10 @@
       {
         "from": "vendor/platform",
         "to": "platform"
+      },
+      {
+        "from": "licenses",
+        "to": "licenses"
       }
     ],
     "win": {
@@ -91,5 +95,6 @@
     "type": "git",
     "url": "https://github.com/angreenade/adb-connector.git"
   },
-  "homepage": "https://github.com/angreenade/adb-connector"
+  "homepage": "https://github.com/angreenade/adb-connector",
+  "license": "MIT"
 }

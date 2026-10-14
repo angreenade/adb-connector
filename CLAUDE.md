@@ -1,6 +1,6 @@
 # ADB Connector — project notes for Claude Code
 
-Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.7.0** (see `package.json`). Owner: Moshe.
+Windows desktop app (Electron) for any Android device — phones, tablets and watches; the main use case is a **Galaxy Watch over Wi-Fi** (IP + port + pairing code) — with mirroring, shell, apps, files, logcat and quick tools. Current version: **2.7.1** (see `package.json`). Owner: Moshe.
 
 **Rule:** every build gets a new version number in `package.json` (installer is `dist/ADB-Connector-Setup-<version>.exe`) so builds are distinguishable.
 
@@ -43,6 +43,7 @@ User data (`app.getPath('userData')`): `settings.json`, `known-devices.json`, `l
 - **App icons:** `pm list packages -f` → APK path → `exec-out unzip -p <apk> AndroidManifest.xml|resources.arsc|<icon>` (fallback: pull APK ≤80 MB) → `apkmeta.readAppMeta`. Cached on disk by sha1(pkg|apkPath). Loaded lazily per visible row (IntersectionObserver).
 - **Library/History:** every successful install from the computer and every "Save APK" is copied into `userData/library/<pkg>/<version>-<hash>/` (deduped by content hash); history keeps install/downgrade/uninstall/saved events (max 1000).
 - **Watched APK folders:** `settings.apps.folders` (bar under the install options). Main `scanFolders()` walks each folder (depth ≤4), reads every .apk/.apks/.xapk/.apkm with `localMeta()` and caches it in `userData/folder-index.json` by path+size+mtime, then keeps the newest versionCode per package. Files are NOT copied (library copies happen only on install). Renderer reads installed versions with `pm list packages --show-versioncode`; any package whose newest library/folder copy has a higher versionCode gets an Update button, the "N updates available / Update all" banner, and a highlighted library card. Folder items appear in My library tagged "folder".
+- **Licensing:** app code is MIT (`LICENSE`, © Moshe Greenblatt). Third-party components and their licenses: `THIRD_PARTY_NOTICES.md`; full texts in `licenses/` (shipped as `resources/licenses`, opened from Settings → About). When adding a dependency or bundled binary, add it there (re-run the npm license collector if JS deps change).
 - **Delivery:** before 2.5.0 the portable exe was sent in parts + a join .bat (kill the running exe first — a locked exe made the old version launch silently). From 2.5.0 on: GitHub Releases + auto-update.
 
 ## Tests (simulator)

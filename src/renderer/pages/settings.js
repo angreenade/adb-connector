@@ -36,7 +36,8 @@ export const page = {
         <section class="panel">
           <h2>About</h2>
           <dl class="details compact"><div><dt>ADB Connector</dt><dd>${esc(ver || '')}</dd></div><div><dt>ADB</dt><dd>${esc(adbVer || 'not running')}</dd></div><div><dt>Screen mirroring</dt><dd>scrcpy 3.3.1</dd></div></dl>
-          <div class="row"><button class="btn tonal sm" id="openLog">${icon('file')}Open log file</button></div>
+          <div class="row"><button class="btn tonal sm" id="openLog">${icon('file')}Open log file</button><button class="btn text sm" id="openLic">${icon('info')}Open-source licenses</button></div>
+          <p class="muted small">ADB Connector is free software under the MIT License. It includes scrcpy, adb, FFmpeg, SDL2 and other open-source components under their own licenses.</p>
         </section>
       </div>`;
     $$('#lang button', el).forEach((b) => (b.onclick = async () => { if ((store.settings.lang || 'en') === b.dataset.l) return; $$('#lang button', el).forEach((x) => x.classList.toggle('on', x === b)); try { localStorage.setItem('lang', b.dataset.l); } catch {} await setSettings({ lang: b.dataset.l }); api.reloadWindow(); }));
@@ -46,6 +47,7 @@ export const page = {
     $$('[data-open]', el).forEach((b) => (b.onclick = () => api.openFolder(b.dataset.open)));
     $('#auto', el).onchange = (e) => setSettings({ autoReconnect: e.target.checked });
     $$('[data-inst]', el).forEach((c) => (c.onchange = () => setSettings({ install: { ...store.settings.install, [c.dataset.inst]: c.checked } })));
+    $('#openLic', el).onclick = () => api.openLicenses();
     $('#openLog', el).onclick = () => api.openLog();
   },
 };

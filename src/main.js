@@ -1364,6 +1364,7 @@ handle('save-file', (_e, kind, bytes, ext) => { const file = path.join(outDir(ki
 handle('open-file', (_e, f) => shell.openPath(f));
 handle('show-file', (_e, f) => { shell.showItemInFolder(f); return true; });
 handle('open-folder', (_e, kind) => shell.openPath(outDir(kind)));
+handle('open-licenses', () => { const d = app.isPackaged ? path.join(process.resourcesPath, 'licenses') : path.join(__dirname, '..', 'licenses'); return shell.openPath(d); });
 handle('open-log', () => { log('log opened'); shell.showItemInFolder(userFile('log.txt')); return ok(); });
 handle('copy', (_e, t) => { clipboard.writeText(String(t)); return true; });
 handle('copy-image', (_e, f) => { const img = nativeImage.createFromPath(f); if (img.isEmpty()) return { ok: false, msg: 'Could not copy' }; clipboard.writeImage(img); return ok('Copied to clipboard'); });

@@ -29,7 +29,7 @@ Turn on **Developer options** on the device (tap *Build number* 7 times in *Abou
 **Notes**
 - Mirroring needs Android 5.0 or newer.
 - Xiaomi / Redmi / POCO: also turn on **USB debugging (Security settings)** for touch control and permission granting.
-- Without root, system apps are removed for the current user only (reversible).
+- Built-in system apps can't be deleted from a normal (non-rooted) device. The app can turn them off for your user instead, and you can bring them back at any time.
 
 ## Build from source
 ```
@@ -37,4 +37,10 @@ npm install
 npm start        # run in development
 npm run dist     # build the Windows installer
 ```
-Releases are built by GitHub Actions when the version in `package.json` changes. Includes scrcpy 3.3.1 and Android platform tools (`vendor/platform`).
+Releases are built by GitHub Actions when the version in `package.json` changes. Includes scrcpy 3.3.1 and adb (`vendor/platform`).
+
+## License
+ADB Connector is free software under the [MIT License](LICENSE).
+It includes scrcpy, adb, FFmpeg, SDL2, libusb and other open-source components under their own licenses — see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Android, Wear OS and Galaxy Watch are trademarks of their respective owners. This is an independent project, not affiliated with or endorsed by Google or Samsung.

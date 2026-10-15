@@ -1,0 +1,50 @@
+name: Release
+
+# Bump "version" in package.json and push to main → GitHub builds the Windows installer
+# and publishes it as Release v<version>. Already-complete releases are skipped.
+# Installed apps see the new Release and offer the update.
+on:
+  push:
+    branches: [main]
+    paths: ['package.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Read version
+        id: ver
+        shell: bash
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Skip if this version is already released
+        id: chk
+        shell: bash
+        run: |
+          if gh release view "${{ steps.ver.outputs.tag }}" --json assets --jq '.assets[].name' 2>/dev/null | grep -qx latest.yml; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"; echo "${{ steps.ver.outputs.tag }} is already released"
+          fi
+      - run: npm ci
+        if: steps.chk.outputs.skip != '1'
+      - name: Build installer
+        if: steps.chk.outputs.skip != '1'
+        run: npm run dist
+      - name: Publish release
+        if: steps.chk.outputs.skip != '1'
+        shell: bash
+        run: |
+          T="${{ steps.ver.outputs.tag }}"
+          bash .github/notes.sh "${T#v}" > notes.md
+          gh release view "$T" >/dev/null 2>&1 || gh release create "$T" --target "$GITHUB_SHA" --title "ADB Connector ${T#v}" --notes-file notes.md
+          gh release upload "$T" dist/ADB-Connector-Setup-*.exe dist/ADB-Connector-Setup-*.exe.blockmap dist/latest.yml --clobber
+          gh release edit "$T" --draft=false --latest

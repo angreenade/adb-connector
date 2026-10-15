@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+// Fake Android device commands (getprop, wm, settings, dumpsys, pm, am, cmd, svc, input, screencap, screenrecord, logcat, …)
+const fs = require('fs'), path = require('path');
+const SIM = process.env.SIM;
+const name = path.basename(process.argv[1]);
+const a = process.argv.slice(2);
+const db = path.join(SIM, 'settings.json');
+const S = (() => { try { return JSON.parse(fs.readFileSync(db, 'utf8')); } catch { return {}; } })();
+const saveS = () => fs.writeFileSync(db, JSON.stringify(S));
+const log = (s) => fs.appendFileSync(path.join(SIM, 'device.log'), s + '\n');
+const out = (s, c = 0) => { process.stdout.write(s); process.exit(c); };
+const pkgsFile = path.join(SIM, 'packages.txt');
+const pkgs = () => (fs.existsSync(pkgsFile) ? fs.readFileSync(pkgsFile, 'utf8') : '').split('\n').map((x) => x.trim()).filter(Boolean);
+const PROPS = { 'ro.product.manufacturer': 'samsung', 'ro.product.brand': 'samsung', 'ro.product.model': 'SM-R920', 'ro.product.device': 'freshwifi', 'ro.build.version.release': '16', 'ro.build.version.sdk': '36', 'ro.build.version.security_patch': '2026-09-01', 'ro.build.display.id': 'R920XXU9FYI1', 'ro.product.cpu.abi': 'arm64-v8a', 'ro.serialno': 'RFATB1HMFMW', 'ro.build.characteristics': 'nosdcard,watch' };
+log(`${name} ${a.join(' ')}`);
+switch (name) {
+  case 'getprop': out(a[0] ? (PROPS[a[0]] ?? '') + '\n' : Object.entries(PROPS).map(([k, v]) => `[${k}]: [${v}]`).join('\n') + '\n');
+  case 'wm': {
+    const k = a[0];
+    if (a[1] === 'reset') { delete S['wm.' + k]; saveS(); out(''); }
+    if (a[1]) { S['wm.' + k] = a[1]; saveS(); out(''); }
+    if (k === 'size') out('Physical size: 450x450\n' + (S['wm.size'] ? `Override size: ${S['wm.size']}\n` : ''));
+    if (k === 'density') out('Physical density: 320\n' + (S['wm.density'] ? `Override density: ${S['wm.density']}\n` : ''));
+    if (k === 'dismiss-keyguard') out('');
+    out('');
+  }
+  case 'settings': {
+    const [op, ns, key, val] = a;
+    if (op === 'get') out((S[`${ns}.${key}`] ?? { 'system.font_scale': '1.0', 'system.screen_off_timeout': '15000', 'system.screen_brightness': '200', 'system.screen_brightness_mode': '1' }[`${ns}.${key}`] ?? 'null') + '\n');
+    if (op === 'put') { S[`${ns}.${key}`] = val; saveS(); out(''); }
+    out('');
+  }
+  case 'dumpsys': {
+    if (a[0] === 'battery') { if (a[1]) out(''); out('Current Battery Service state:\n  AC powered: false\n  USB powered: false\n  Wireless powered: true\n  status: 2\n  health: 2\n  present: true\n  level: 76\n  scale: 100\n  voltage: 4120\n  temperature: 312\n  technology: Li-ion\n'); }
+    if (a[0] === 'package') out(`Packages:\n  Package [${a[1]}] (abc):\n    versionCode=4021 minSdk=30 targetSdk=34\n    versionName=4.2.1\n    firstInstallTime=2026-10-01 10:00:00\n    lastUpdateTime=2026-10-11 09:00:00\n    installerPackageName=com.android.vending\n    requested permissions:\n      android.permission.BLUETOOTH_CONNECT\n      android.permission.BLUETOOTH_SCAN\n      android.permission.INTERNET\n    install permissions:\n      android.permission.INTERNET: granted=true\n    User 0: ceDataInode=1 installed=true\n      runtime permissions:\n        android.permission.BLUETOOTH_CONNECT: granted=${S['perm.' + a[1] + '.android.permission.BLUETOOTH_CONNECT'] === 'true'}, flags=[ USER_SENSITIVE_WHEN_GRANTED ]\n        android.permission.BLUETOOTH_SCAN: granted=${S['perm.' + a[1] + '.android.permission.BLUETOOTH_SCAN'] === 'true'}, flags=[ USER_SENSITIVE_WHEN_GRANTED ]\n        android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SET ]\n`);
+    if (a[0] === 'activity') out('  topResumedActivity=ActivityRecord{1 u0 com.samsung.android.watch.watchface/.WatchFaceActivity t1}\n');
+    out('');
+  }
+  case 'pm': {
+    const user = ['app.relink', 'com.example.watchface', 'com.moshe.timer', 'com.termux', ...pkgs()];
+    const VER = { 'app.relink': 30400, 'com.example.watchface': 5, 'com.moshe.timer': 1, 'com.termux': 1000, ...(fs.existsSync(path.join(SIM, 'versions.json')) ? JSON.parse(fs.readFileSync(path.join(SIM, 'versions.json'), 'utf8')) : {}) };
+    const sys = ['android', 'com.android.settings', 'com.google.android.wearable.app', 'com.samsung.android.health'];
+    if (a[0] === 'list' && a[1] === 'packages' && a.includes('--show-versioncode')) out([...user, ...sys].map((p) => `package:${p} versionCode:${VER[p] || 1}`).join('\n') + '\n');
+    if (a[0] === 'list' && a[1] === 'packages' && a[2] === '-f') out([...user, ...sys].map((p) => `package:${path.join(SIM, 'root/app', p + '.apk')}=${p}`).join('\n') + '\n');
+    if (a[0] === 'list' && a[1] === 'packages') { const f = a[2]; const l = f === '-3' ? user : f === '-s' ? sys : f === '-d' ? (S.disabled || []) : [...user, ...sys]; out(l.map((p) => 'package:' + p).join('\n') + '\n'); }
+    if (a[0] === 'path') out(`package:${path.join(SIM, 'root/app/base.apk')}\n`);
+    if (a[0] === 'grant' || a[0] === 'revoke') {
+      if (!a[2]) out('Error: no permission specified\n', 255);
+      if (a[2] === 'android.permission.CAMERA') out(`Exception occurred while executing 'grant':\njava.lang.SecurityException: Package ${a[1]} has not requested permission android.permission.CAMERA\n`, 255);
+      S['perm.' + a[1] + '.' + a[2]] = a[0] === 'grant' ? 'true' : 'false'; saveS(); out('');
+    }
+    if (a[0] === 'clear') out('Success\n');
+    if (a[0] === 'uninstall') { fs.writeFileSync(path.join(SIM, 'removed.flag'), a.join(' ')); out('Success\n'); }
+    if (a[0] === 'install') out('Success\n');
+    if (a[0] === 'disable-user') { S.disabled = [...(S.disabled || []), a[a.length - 1]]; saveS(); out(`Package ${a[a.length - 1]} new state: disabled-user\n`); }
+    if (a[0] === 'enable') { S.disabled = (S.disabled || []).filter((x) => x !== a[1]); saveS(); out(`Package ${a[1]} new state: enabled\n`); }
+    out('');
+  }
+  case 'cmd': {
+    if (a[0] === 'package' && a[1] === 'resolve-activity') out(`priority=0 preferredOrder=0\n${a[a.length - 1]}/.MainActivity\n`);
+    if (a[0] === 'uimode') { if (a[2]) { S.night = a[2]; saveS(); out(`Night mode: ${a[2]}\n`); } out(`Night mode: ${S.night || 'auto'}\n`); }
+    out('');
+  }
+  case 'screencap': process.stdout.write(fs.readFileSync(path.join(SIM, 'screen.png'))); process.exit(0);
+  case 'screenrecord': {
+    const file = a[a.length - 1];
+    const lim = +a[a.indexOf('--time-limit') + 1] || 180;
+    const done = () => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file, Buffer.alloc(5000, 7)); process.exit(0); };
+    process.on('SIGINT', done); process.on('SIGTERM', done);
+    fs.writeFileSync(path.join(SIM, 'screenrecord.pid'), String(process.pid));
+    setTimeout(done, lim * 1000);
+    break;
+  }
+  case 'pkill': case 'kill': { try { const pid = +fs.readFileSync(path.join(SIM, 'screenrecord.pid'), 'utf8'); process.kill(pid, 'SIGINT'); out(''); } catch { out('', 1); } }
+  case 'pidof': out(a[0] === 'app.relink' ? '4321\n' : '', a[0] === 'app.relink' ? 0 : 1);
+  case 'logcat': {
+    if (a.includes('-c')) out('');
+    const lines = ['10-11 12:00:00.001  1000  1000 I ActivityManager: Start proc com.example', '10-11 12:00:00.002  4321  4321 D Relink  : Bluetooth scan started', '10-11 12:00:00.003  4321  4321 W Relink  : permission BLUETOOTH_CONNECT missing', '10-11 12:00:00.004  999  999 E AndroidRuntime: FATAL EXCEPTION: main'];
+    if (a.includes('-d')) out(lines.join('\n') + '\n');
+    process.stdout.write('--------- beginning of main\n' + lines.join('\n') + '\n');
+    let i = 0; setInterval(() => { process.stdout.write(`10-11 12:00:${String(10 + (i % 50)).padStart(2, '0')}.000  4321  4321 ${'VDIWE'[i % 5]} SimTag  : live line ${i++}\n`); }, 300);
+    break;
+  }
+  case 'df': out('Filesystem     1K-blocks    Used Available Use% Mounted on\n/dev/block/dm-48 11000000 4500000 6500000  41% /data\n');
+  default: out(''); // am, svc, input, monkey, setprop, service, reboot, stty …
+}
